@@ -17,7 +17,7 @@ defaults:
   - _self_
 
 model:
-  model_name_or_path: bigscience/bloomz-560m # tiny model for debugging 
+  model_name_or_path: bigscience/bloomz-560m # change to smaller model for debugging
   # cache_dir: .cache/ # only uncomment this if not working on ccn otherwise crash in home directory!
 
 # training:
