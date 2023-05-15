@@ -25,3 +25,4 @@ model:
 
 data:
   dataset_name: stas/openwebtext-10k
+  cache_dir: .cache/

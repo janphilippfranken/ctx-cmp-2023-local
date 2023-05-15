@@ -1,29 +1,30 @@
 """
 Based on https://github.com/jayelm/gisting/blob/main/src/arguments.py.
+
+Script currently contains three types of arguments:
+    - ModelArguments: Arguments related to the model.
+    - CustomTrainingArguments: Arguments related to training.
+    - DataArguments: Arguments related to the data.
 """
 import logging
-import os.path as osp
 import socket
 from dataclasses import dataclass, field
 from typing import Optional, List
 
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
+
 from transformers import TrainingArguments
 
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ModelArguments:
     """
     Model Arguments.
     """
-    model_name_or_path: str = field(
-        default="bigscience/bloomz-560m", 
-        metadata={
-            "help": "The model checkpoint for weights initialization."
-        }
-    )
     cache_dir: Optional[str] = field(
         default="/data/jphilipp/research-projects/ctx-cmp-2023/.cache/huggingface",
         metadata={
@@ -32,31 +33,97 @@ class ModelArguments:
             )
         },
     )
+    model_name_or_path: str = field(
+        default="bigscience/bloomz-560m", 
+        metadata={
+            "help": "The model checkpoint for weights initialization."
+        }
+    )
+    tokenizer_name: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Pretrained tokenizer name or path if not the same as model_name_or_path."
+        },
+    )
+    use_fast_tokenizer: bool = field(
+        default=True,
+        metadata={
+            "help": (
+                "Whether to use one of the fast tokenizer (backed by the tokenizers "
+                "library) or not."
+            )
+        },
+    )
+    
 
 @dataclass
 class CustomTrainingArguments(TrainingArguments):
     """
-    Training Arguments with type fixes. 
+    Training Arguments with type fixes (TODO: need to adjust the types to strs so that they typecheck works).
     """
-    pass
+    output_dir: str = field(
+        default="../output_dir",
+        metadata={
+            "help": (
+                    "The output directory where the model predictions and checkpoints will be written."
+            )   
+        },
+    )
+    seed: Optional[int] = field(
+        default=42,
+        metadata={
+            "help": (
+                "Random seed to be used with data samplers. If not set, random generators for data sampling will use the same seed as seed." 
+                "This can be used to ensure reproducibility of data sampling, independent of the model seed."
+            )
+        },
+    )
+    data_seed: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "Random seed to be used with data samplers. If not set, random generators for data sampling will use the same seed as seed." 
+                "This can be used to ensure reproducibility of data sampling, independent of the model seed."
+            )
+        },
+    )
+
+    _run_post_init: bool = False
+
     def __post_init__(self):
-        # Don't run post-init until ready to convert to TrainingArgs
+        # Don't run post-init until ready to convert to TrainingArgs (check jesse's repo for details on converting args to str/optional)
         if self._run_post_init:
             super().__post_init__()
-
+    
 
 @dataclass
 class DataArguments:
     """
     Data Arguments.
     """
+    cache_dir: Optional[str] = field(
+        default="/data/jphilipp/research-projects/ctx-cmp-2023/.cache/huggingface",
+        metadata={
+            "help": (
+                "Where to store/cache downloaded dataset."
+            )
+        },
+    )
     dataset_name: Optional[str] = field(
         default="stas/openwebtext-10k",
-        metadata={"help": "The name of the dataset for datasets.load_dataset(dataset_name)."},
+        metadata={
+            "help": (
+                "The name of the dataset for datasets.load_dataset(dataset_name)."
+            ),
+        },
     )
     load_split: Optional[str] = field(
         default="train",
-        metadata={"help": "The split of the dataset loaded using datasets.load_dataset()."},
+        metadata={
+            "help": (
+                "The split of the dataset loaded using datasets.load_dataset()."
+            ),
+        },
     )
     num_proc: Optional[int] = field(
         default=4,
@@ -87,17 +154,72 @@ class DataArguments:
         default_factory=lambda: ["text"],
         metadata={
             "help": (
-            "Columns to remove from the dataset after tokenization."
+                "Columns to remove from the dataset after tokenization."
+            )
+        },
+    )
+    val_size: Optional[float] = field(
+        default=0.2,
+        metadata={
+            "help": (
+                "Size of the validation set."
+            )
+        },
+    )
+
+# # adding custom arguments for  self.cmp_len = args.compression.cmp_len
+#         self.seq_len = args.compression.seq_len
+#         self.overlap = args.compression.overlap
+
+#         self.min_seq = args.compression.min_seq
+
+@dataclass
+class CompressionArguments:
+    """
+    Compression Arguments.
+    """
+    cmp_len: Optional[int] = field(
+        default=20,
+        metadata={
+            "help": (
+                "The length of the compreesion."
+            )
+        },
+    )
+    seq_len: Optional[int] = field(
+        default=100,
+        metadata={
+            "help": (
+                "The length of the post compression, sequence chunk that will be processed by the transformer."
+                 "So, the total predictive sequence will be seq_len+cmp_len tokens long."
+            )
+        },
+    )
+    overlap: Optional[int] = field(
+        default=0,
+        metadata={
+            "help": (
+                "The number of overlapping tokens from the compression sequence to the rest of the sequence."
+            )
+        },
+    )
+    min_seq: Optional[int] = field(
+        default=5,
+        metadata={
+            "help": (
+                "The minimum length predictive portion. Total sequence lengths must be greater than or equal to cmp_len + min_seq."
             )
         },
     )
 
 
+
 @dataclass
 class Arguments:
     model: ModelArguments = ModelArguments()
-    # training: CustomTrainingArguments = CustomTrainingArguments()
+    training: CustomTrainingArguments = CustomTrainingArguments()
     data: DataArguments = DataArguments() 
+    compression: CompressionArguments = CompressionArguments()
 
 
 cs = ConfigStore.instance()

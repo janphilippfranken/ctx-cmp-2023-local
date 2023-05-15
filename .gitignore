@@ -1,14 +1,14 @@
-.DS_Store
 *.pyc
-__pycache__
 
+**/__pycache__/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
+# Ignore cache and DS_Store
+**/.cache/
+**/.DS_Store
+
 # satisfy github size req 
 find . -size +100M | cat >> .gitignore
-
-# ignore all __pycache__ folders
-__pycache__/
