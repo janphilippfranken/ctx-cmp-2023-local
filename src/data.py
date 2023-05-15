@@ -80,7 +80,7 @@ class CompressionTokenizer():
                 batch_size=self.args.data.batch_size,
             )
         else:
-             raise NotImplementedError(f"Unknown dataset name {self.args.data.dataset_name}") # TODO: @satchel -> can add other interesting datasets here
+             raise NotImplementedError(f"Unknown dataset name {self.args.data.dataset_name}") # TODO: @add other datasets + funcs
         # Create data loaders
         data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=100, shuffle=True)
         val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=100, shuffle=True)

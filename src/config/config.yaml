@@ -17,12 +17,12 @@ defaults:
   - _self_
 
 model:
-  model_name_or_path: bigscience/bloomz-560m
-  cache_dir: .cache/ # have to change to data on ccn to avoid crash! 
+  model_name_or_path: bigscience/bloomz-560m # tiny model for debugging 
+  # cache_dir: .cache/ # only uncomment this if not working on ccn otherwise crash in home directory!
 
 # training:
 #   generation_max_length: 128
 
 data:
-  dataset_name: stas/openwebtext-10k
+  dataset_name: stas/openwebtext-10k # small version of
   cache_dir: .cache/

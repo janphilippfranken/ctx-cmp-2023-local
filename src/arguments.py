@@ -39,6 +39,15 @@ class ModelArguments:
             "help": "The model checkpoint for weights initialization."
         }
     )
+    pretrained: bool = field(
+        default=True,
+        metadata={
+            "help": (
+                "Use pretrained model. This replaces old run_clm.py script "
+                "`model_type` argument."
+            )
+        },
+    )
     tokenizer_name: Optional[str] = field(
         default=None,
         metadata={
@@ -51,6 +60,23 @@ class ModelArguments:
             "help": (
                 "Whether to use one of the fast tokenizer (backed by the tokenizers "
                 "library) or not."
+            )
+        },
+    )
+    model_revision: str = field(
+        default="main",
+        metadata={
+            "help": (
+                "The specific model version to use (can be a branch name, tag name "
+                "or commit id)."
+            )
+        },
+    )
+    truncation_side: str = field(
+        default="right",
+        metadata={
+            "help": (
+                "Truncation side to use. Choose from ['left', 'right', 'longest_first', 'do_not_truncate']."
             )
         },
     )
@@ -110,7 +136,7 @@ class DataArguments:
         },
     )
     dataset_name: Optional[str] = field(
-        default="stas/openwebtext-10k",
+        default="openwebtext",
         metadata={
             "help": (
                 "The name of the dataset for datasets.load_dataset(dataset_name)."

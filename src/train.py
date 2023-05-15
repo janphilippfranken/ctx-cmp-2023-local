@@ -18,13 +18,17 @@ Training script, adapted from huggingface's run_clm.py example and jesse's train
 import logging
 import os
 
+
 import hydra
 import torch
 from datasets import DatasetDict, load_dataset
 from omegaconf.dictconfig import DictConfig
 from transformers import (
     AutoTokenizer,
+    AutoConfig,
     AutoModelForCausalLM,
+    Trainer, 
+    TrainingArguments,
     set_seed,
 )
 from transformers.trainer_utils import get_last_checkpoint
@@ -45,11 +49,16 @@ require_version(
 logger = logging.getLogger(__name__)
 
 
+RMB = "|<RMB>|" # Extra characters are to ensure uniqueness
+CMP = "|<CMP{}>|"
+SOS = "|<SOS>|"
+
+
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(args: DictConfig) -> None:
     args: Arguments = global_setup(args)
 
-    # 1 Detecting last checkpoint.
+    # Detecting last checkpoint.
     last_checkpoint = None
     if (
         os.path.isdir(args.training.output_dir)
@@ -78,12 +87,14 @@ def main(args: DictConfig) -> None:
                 "scratch."
             )
 
-    # 2 Set seed before initializing model.
+    # Set seed before initializing model.
     set_seed(args.training.seed)
 
+    # 3 Tokenizer
     tokenizer_kwargs = {
         "cache_dir": args.model.cache_dir,
         "use_fast": args.model.use_fast_tokenizer,
+        "truncation_side": args.model.truncation_side,
     }
 
     if args.model.tokenizer_name:
@@ -95,23 +106,39 @@ def main(args: DictConfig) -> None:
             args.model.model_name_or_path, **tokenizer_kwargs
         )
 
-    # 3 Load datasets.
+    # 4 Datasets
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
     dataset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
-    print(dataset)
-    print(valset)
-    print(data_loader)
-    print(val_loader)
-   
+    # print(tokenizer.decode(dataset[0]['input_ids']))
+
+    # 4 Model and config
+    config_kwargs = {
+        "cache_dir": args.model.cache_dir,
+    }
+    if args.model.model_name_or_path:
+        config = AutoConfig.from_pretrained(
+            args.model.model_name_or_path, **config_kwargs
+        )
     
-
-
-# model_checkpoint = "bigscience/bloomz-560m"
-# tokenizer = AutoTokenizer.from_pretrained(model_checkpoint, use_fast=True)
-# tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-
-    
-
+    # get model
+    is_bloom = "bloomz" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
+    if is_bloom:
+        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
+    else:
+        raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
+    if args.model.pretrained:
+        model = model_cls.from_pretrained(
+            args.model.model_name_or_path,
+            from_tf=bool(".ckpt" in args.model.model_name_or_path),
+            config=config,
+            cache_dir=args.model.cache_dir,
+            revision=args.model.model_revision,
+        )
+    else:
+        raise ValueError(f"AutoConfig not set")
+     
+    # 5 Training
+    print("Training...")
 
 if __name__ == "__main__":
     main()
