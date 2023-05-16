@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Training script, adapted from huggingface's run_clm.py example and jesse's train.py
+Training script, adapted from huggingface's run_clm.py example
 """
 import logging
 import os
