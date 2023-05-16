@@ -58,6 +58,7 @@ SOS = "|<SOS>|"
 def main(args: DictConfig) -> None:
     args: Arguments = global_setup(args)
 
+    print(args.training.max_steps)
 
     # Detecting last checkpoint.
     last_checkpoint = None
@@ -108,8 +109,9 @@ def main(args: DictConfig) -> None:
         )
 
     # 4 Datasets
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
-    dataset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
+    tokenized_dataset, trainset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
 
     # 4 Model and config
     config_kwargs = {
@@ -122,7 +124,12 @@ def main(args: DictConfig) -> None:
     
     # get model
     is_bloom = "bloomz" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
+    is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
+
+
     if is_bloom:
+        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
+    elif is_gpt2:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
     else:
         raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
@@ -136,16 +143,45 @@ def main(args: DictConfig) -> None:
         )
     else:
         raise ValueError(f"AutoConfig not set")
-     
+    
+    block_size = 8
+    
+    def group_texts(examples):
+        # Concatenate all texts.
+        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+            # customize this part to your needs.
+        total_length = (total_length // block_size) * block_size
+        # Split by chunks of max_len.
+        result = {
+            k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
+            for k, t in concatenated_examples.items()
+        }
+        result["labels"] = result["input_ids"].copy()
+        return result
+        
+
+    lm_datasets = tokenized_dataset.map(
+        group_texts,
+        batched=True,
+        batch_size=2,
+        num_proc=4,
+    )
+
     # 5 Training
     trainer = Trainer(
         model=model,
         args=args.training,
-        train_dataset=dataset,
-        eval_dataset=valset,
+        train_dataset=lm_datasets["train"],
+        eval_dataset=lm_datasets["val"],
     )   
 
+
     trainer.train()
+    eval_results = trainer.evaluate()
+    import math
+    print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":
     main()

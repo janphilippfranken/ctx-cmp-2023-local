@@ -28,6 +28,10 @@ class CompressionTokenizer():
             cache_dir=args.data.cache_dir,
             num_proc=args.data.num_proc)
         
+        # Adjust size of dataset 
+        if args.data.resize:
+            self.dataset = self.dataset.shuffle(args.training.data_seed).select(range(args.data.size))
+        
         # Split into train/val
         split = self.dataset.train_test_split(test_size=args.data.val_size)
         self.train_set, self.validation_set = split["train"], split["test"]
@@ -81,4 +85,4 @@ class CompressionTokenizer():
         data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=100, shuffle=True)
         val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=100, shuffle=True)
 
-        return tokenized_dataset["train"], tokenized_dataset["val"], data_loader, val_loader
+        return tokenized_dataset, tokenized_dataset["train"], tokenized_dataset["val"], data_loader, val_loader

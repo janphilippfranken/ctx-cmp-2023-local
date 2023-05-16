@@ -1,0 +1,22 @@
+{
+    "os": "macOS-13.3.1-arm64-arm-64bit",
+    "python": "3.9.16",
+    "heartbeatAt": "2023-05-16T21:52:57.009125",
+    "startedAt": "2023-05-16T21:52:56.868200",
+    "docker": null,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/Users/jan-philippfranken/Documents/research/postdoc/ctx-cmp-2023/github-repo/ctx-cmp-2023-local/src/train.py",
+    "codePath": "src/train.py",
+    "git": {
+        "remote": "https://github.com/janphilippfranken/ctx-cmp-2023-local.git",
+        "commit": "63a5b55f48d8839f718b98af2ad11424ec08ed3f"
+    },
+    "email": "janphilipp.franken@gmail.com",
+    "root": "/Users/jan-philippfranken/Documents/research/postdoc/ctx-cmp-2023/github-repo/ctx-cmp-2023-local",
+    "host": "DN0a2415f2.SUNet",
+    "username": "jan-philippfranken",
+    "executable": "/Users/jan-philippfranken/miniforge3/envs/ctx-cmp-2023/bin/python"
+}

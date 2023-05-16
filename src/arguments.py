@@ -152,6 +152,15 @@ class CustomTrainingArguments(TrainingArguments):
             )
         },
     )
+    generation_max_length: Optional[int] = field(
+        default=128,
+        metadata={
+            "help": (
+                "The max_length to use on each evaluation loop when predict_with_generate=True."
+                "Will default to the max_length value of the model configuration."
+            )
+        },
+    )
 
     _run_post_init: bool = False
 
@@ -220,6 +229,22 @@ class DataArguments:
         metadata={
             "help": (
                 "Columns to remove from the dataset after tokenization."
+            )
+        },
+    )
+    resize: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": (
+                "Resize the dataset to a smaller size."
+            )
+        },
+    )
+    size: Optional[int] = field(
+        default=100,
+        metadata={
+            "help": (
+                "Size of random sample of dataset to use."
             )
         },
     )
