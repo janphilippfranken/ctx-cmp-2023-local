@@ -18,10 +18,14 @@ defaults:
 
 model:
   model_name_or_path: bigscience/bloomz-560m # change to smaller model for debugging
-  # cache_dir: .cache/ # only uncomment this if not working on ccn otherwise crash in home directory!
+  cache_dir: .cache/ # only uncomment this if not working on ccn otherwise crash in home directory!
 
-# training:
-#   generation_max_length: 128
+training:
+  generation_max_length: 128
+  log_level: info
+  do_train: True
+  overwrite_output_dir: False
+
 
 data:
   dataset_name: stas/openwebtext-10k # small version of

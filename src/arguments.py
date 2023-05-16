@@ -1,16 +1,23 @@
 """
-Based on https://github.com/jayelm/gisting/blob/main/src/arguments.py.
+Based on 
+    - https://huggingface.co/docs/transformers/v4.29.1/en/main_classes/trainer#transformers.TrainingArguments 
+    - https://github.com/jayelm/gisting/blob/main/src/arguments.py (thanks for the `dirty hack' :p)
+    - https://github.com/grantsrb/ctx_cmp/tree/master 
 
 Script currently contains three types of arguments:
-    - ModelArguments: Arguments related to the model.
-    - CustomTrainingArguments: Arguments related to training.
-    - DataArguments: Arguments related to the data.
+    - ModelArguments
+    - CustomTrainingArguments (Based on HuggingFace TrainingArguments)
+    - DataArguments
+    - CompressionArguments: Custom arguments related to the token compression
 """
 import logging
 import socket
+import sys
 from dataclasses import dataclass, field
 from typing import Optional, List
 
+import datasets
+import transformers
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 
@@ -72,6 +79,14 @@ class ModelArguments:
             )
         },
     )
+    truncation: bool = field(
+        default=True,
+        metadata={
+            "help": (
+                "Truncation strategy to use. Choose from [True, False]."
+            )
+        },
+    )
     truncation_side: str = field(
         default="right",
         metadata={
@@ -80,7 +95,31 @@ class ModelArguments:
             )
         },
     )
-    
+    padding_side: str = field(
+        default="right",
+        metadata={
+            "help": (
+                "Padding side to use."
+            )
+        },
+    )
+    padding: str = field(
+        default="max_length",
+        metadata={
+            "help": (
+                "Padding strategy to use for tokenizer()."
+            )
+        },
+    )
+    return_tensors: str = field(
+        default="pt",
+        metadata={
+            "help": (
+                "Return tensors argument for tokenizer()."
+            )
+        },
+    )
+
 
 @dataclass
 class CustomTrainingArguments(TrainingArguments):
@@ -117,7 +156,7 @@ class CustomTrainingArguments(TrainingArguments):
     _run_post_init: bool = False
 
     def __post_init__(self):
-        # Don't run post-init until ready to convert to TrainingArgs (check jesse's repo for details on converting args to str/optional)
+        # Don't run post-init until ready to convert to TrainingArgs (https://github.com/jayelm/gisting/blob/main/src/arguments.py)
         if self._run_post_init:
             super().__post_init__()
     
@@ -169,7 +208,7 @@ class DataArguments:
         },
     )
     batch_size: Optional[int] = field(
-        default=1000,
+        default=10,
         metadata={
             "help": (
                  "Size of each batch to be processed by map()." 
@@ -192,12 +231,15 @@ class DataArguments:
             )
         },
     )
+    text_column_name: str = field(
+        default="text",
+        metadata={
+            "help": (
+                "where in examples to find the data we are interested in."
+            )
+        },
+    )
 
-# # adding custom arguments for  self.cmp_len = args.compression.cmp_len
-#         self.seq_len = args.compression.seq_len
-#         self.overlap = args.compression.overlap
-
-#         self.min_seq = args.compression.min_seq
 
 @dataclass
 class CompressionArguments:
@@ -239,7 +281,6 @@ class CompressionArguments:
     )
 
 
-
 @dataclass
 class Arguments:
     model: ModelArguments = ModelArguments()
@@ -249,7 +290,7 @@ class Arguments:
 
 
 cs = ConfigStore.instance()
-cs.store(name="base_config", node=Arguments)
+cs.store(name="base_config", node=Arguments) # needs to be same name as defaults in /config/config.yaml
 
 
 def global_setup(args: DictConfig) -> Arguments:
@@ -258,6 +299,36 @@ def global_setup(args: DictConfig) -> Arguments:
     hostname = socket.gethostname()
     logger.info(f"Running on {hostname}")
 
+     # Setup logging
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
+    # Convert args to the actual dataclass object, to enable methods.  Need to
+    # delete _n_gpu, a property that TrainingArgs init doesn't expect.
+    del args.training._n_gpu
+    # Dirty hack: only run post init when we're ready to convert to TrainingArgs
+    args.training._run_post_init = True
     args = OmegaConf.to_object(args)
+
+    log_level = args.training.get_process_log_level()
+    logger.setLevel(log_level)
+    datasets.utils.logging.set_verbosity(log_level)
+    transformers.utils.logging.set_verbosity(log_level)
+    transformers.utils.logging.enable_default_handler()
+    transformers.utils.logging.enable_explicit_format()
+
+    # uncomment once running
+    # Log on each process the small summary:
+    # logger.warning(
+    #     f"Process rank: {args.training.local_rank}, device: {args.training.device}, "
+    #     f"n_gpu: {args.training.n_gpu}"
+    #     f" distributed training: {bool(args.training.local_rank != -1)}, 16-bits "
+    #     f"training: {args.training.fp16}, bf16 training: {args.training.bf16}"
+    # )
+    # logger.info(f"Training/evaluation parameters {args.training}")
+
 
     return args

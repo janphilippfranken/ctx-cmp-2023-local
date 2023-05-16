@@ -58,13 +58,14 @@ SOS = "|<SOS>|"
 def main(args: DictConfig) -> None:
     args: Arguments = global_setup(args)
 
+
     # Detecting last checkpoint.
     last_checkpoint = None
     if (
         os.path.isdir(args.training.output_dir)
         and args.training.do_train
         and not args.training.overwrite_output_dir
-    ):
+    ):  
         last_checkpoint = get_last_checkpoint(args.training.output_dir)
         if last_checkpoint is None and len(os.listdir(args.training.output_dir)) > 0:
             existing_files = os.listdir(args.training.output_dir)
@@ -79,7 +80,7 @@ def main(args: DictConfig) -> None:
             )
         elif (
             last_checkpoint is not None and args.training.resume_from_checkpoint is None
-        ):
+        ):  
             logger.info(
                 f"Checkpoint detected, resuming training at {last_checkpoint}. To "
                 "avoid this behavior, change "
@@ -109,7 +110,6 @@ def main(args: DictConfig) -> None:
     # 4 Datasets
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
     dataset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
-    # print(tokenizer.decode(dataset[0]['input_ids']))
 
     # 4 Model and config
     config_kwargs = {
@@ -138,7 +138,14 @@ def main(args: DictConfig) -> None:
         raise ValueError(f"AutoConfig not set")
      
     # 5 Training
-    print("Training...")
+    trainer = Trainer(
+        model=model,
+        args=args.training,
+        train_dataset=dataset,
+        eval_dataset=valset,
+    )   
+
+    trainer.train()
 
 if __name__ == "__main__":
     main()

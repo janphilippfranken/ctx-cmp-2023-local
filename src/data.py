@@ -20,12 +20,8 @@ class CompressionTokenizer():
                  tokenizer: AutoTokenizer, 
                  args: DictConfig):
         self.args = args
-        self.cmp_len = args.compression.cmp_len
-        self.seq_len = args.compression.seq_len
-        self.overlap = args.compression.overlap
-        self.min_seq = args.compression.min_seq
         self.tokenizer = tokenizer
-
+       
         # Load dataset
         self.dataset = load_dataset(args.data.dataset_name,
             split=args.data.load_split,
@@ -48,20 +44,20 @@ class CompressionTokenizer():
         """
         Tokenize the examples.
         """
-        self.tokenizer.padding_side = "right"
+        self.tokenizer.padding_side = self.args.model.padding_side
         cmps = self.tokenizer(
-            examples["text"],
-            padding="max_length",
-            max_length=self.cmp_len + self.seq_len,
-            truncation=True,
-            return_tensors="pt"
+            examples[self.args.data.text_column_name],
+            padding=self.args.model.padding,
+            max_length=self.args.compression.cmp_len + self.args.compression.seq_len,
+            truncation=self.args.model.truncation,
+            return_tensors=self.args.model.return_tensors,
         )
         seqs = {
-              "output_ids": cmps["input_ids"][:, self.cmp_len-self.overlap:],
-              "output_attn_mask":cmps["attention_mask"][:,self.cmp_len-self.overlap:],
+              "output_ids": cmps["input_ids"][:, self.args.compression.cmp_len-self.args.compression.overlap:],
+              "output_attn_mask":cmps["attention_mask"][:,self.args.compression.cmp_len-self.args.compression.overlap:],
             }
-        cmps["input_ids"] = cmps["input_ids"][:,:self.cmp_len]
-        cmps["attention_mask"] = cmps["attention_mask"][:,:self.cmp_len]
+        cmps["input_ids"] = cmps["input_ids"][:,:self.args.compression.cmp_len]
+        cmps["attention_mask"] = cmps["attention_mask"][:,:self.args.compression.cmp_len]
 
         return {**cmps, **seqs}
 
@@ -86,4 +82,3 @@ class CompressionTokenizer():
         val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=100, shuffle=True)
 
         return tokenized_dataset["train"], tokenized_dataset["val"], data_loader, val_loader
-
