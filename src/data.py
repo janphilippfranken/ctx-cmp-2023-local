@@ -31,6 +31,12 @@ class CompressionTokenizer():
         # Adjust size of dataset 
         if args.data.resize:
             self.dataset = self.dataset.shuffle(args.training.data_seed).select(range(args.data.size))
+
+        # Adjust block size of tokenizer
+        if args.model.resize:
+            self.block_size = args.model.block_size
+        else:
+            self.block_size = tokenizer.model_max_length
         
         # Split into train/val
         split = self.dataset.train_test_split(test_size=args.data.val_size)
@@ -41,6 +47,24 @@ class CompressionTokenizer():
             'train': self.train_set,
             'val': self.validation_set
         })
+
+    def group_texts(self, 
+                    examples: Dict[str, str], # ?
+                    ) -> Dict:
+        # Concatenate all texts.
+        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+            # customize this part to your needs.
+        total_length = (total_length // self.block_size) * self.block_size
+        # Split by chunks of max_len.
+        result = {
+            k: [t[i : i + self.block_size] for i in range(0, total_length, self.block_size)]
+            for k, t in concatenated_examples.items()
+        }
+        result["labels"] = result["input_ids"].copy()
+
+        return result
 
     def tokenize(self, 
                  examples: Dict[str, str], # ? 

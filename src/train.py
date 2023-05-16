@@ -21,6 +21,7 @@ import os
 
 import hydra
 import torch
+import math
 from datasets import DatasetDict, load_dataset
 from omegaconf.dictconfig import DictConfig
 from transformers import (
@@ -57,8 +58,6 @@ SOS = "|<SOS>|"
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(args: DictConfig) -> None:
     args: Arguments = global_setup(args)
-
-    print(args.training.max_steps)
 
     # Detecting last checkpoint.
     last_checkpoint = None
@@ -112,8 +111,16 @@ def main(args: DictConfig) -> None:
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
     tokenized_dataset, trainset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
+    lm_datasets = tokenized_dataset.map( # hack for now gotta fix this later
+        cmpr_tokenizer.group_texts,
+        batched=True,
+        batch_size=1,
+        num_proc=4,
+    )
+    print(tokenized_dataset['train'][0])
+    print(lm_datasets['train'][0])
 
-    # 4 Model and config
+    # 5 Model and config
     config_kwargs = {
         "cache_dir": args.model.cache_dir,
     }
@@ -124,8 +131,7 @@ def main(args: DictConfig) -> None:
     
     # get model
     is_bloom = "bloomz" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
-    is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
-
+    is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-') # for debugging on cpu / fast inference
 
     if is_bloom:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
@@ -144,32 +150,7 @@ def main(args: DictConfig) -> None:
     else:
         raise ValueError(f"AutoConfig not set")
     
-    block_size = 8
-    
-    def group_texts(examples):
-        # Concatenate all texts.
-        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-            # customize this part to your needs.
-        total_length = (total_length // block_size) * block_size
-        # Split by chunks of max_len.
-        result = {
-            k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
-            for k, t in concatenated_examples.items()
-        }
-        result["labels"] = result["input_ids"].copy()
-        return result
-        
-
-    lm_datasets = tokenized_dataset.map(
-        group_texts,
-        batched=True,
-        batch_size=2,
-        num_proc=4,
-    )
-
-    # 5 Training
+    # 6 Training
     trainer = Trainer(
         model=model,
         args=args.training,
@@ -177,10 +158,8 @@ def main(args: DictConfig) -> None:
         eval_dataset=lm_datasets["val"],
     )   
 
-
     trainer.train()
     eval_results = trainer.evaluate()
-    import math
     print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":

@@ -119,6 +119,22 @@ class ModelArguments:
             )
         },
     )
+    block_size: Optional[int] = field(
+        default=128,
+        metadata={
+            "help": (
+                "Adjusted block size if model_max_length is too long for GPU."
+            )
+        },
+    )
+    resize: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "If we want to resize the block size."
+            )
+        },
+    )
 
 
 @dataclass
@@ -158,6 +174,16 @@ class CustomTrainingArguments(TrainingArguments):
             "help": (
                 "The max_length to use on each evaluation loop when predict_with_generate=True."
                 "Will default to the max_length value of the model configuration."
+            )
+        },
+    )
+    max_steps: Optional[int] = field(
+        default=10,
+        metadata={
+            "help": (
+                "If set to a positive number, the total number of training steps to perform."
+                "Overrides num_train_epochs. In case of using a finite iterable dataset the training" 
+                "may stop before reaching the set number of steps when all data is exhausted."
             )
         },
     )
@@ -264,7 +290,7 @@ class DataArguments:
             )
         },
     )
-
+    
 
 @dataclass
 class CompressionArguments:
