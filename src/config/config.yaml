@@ -25,7 +25,7 @@ model:
 
 training:
   generation_max_length: 28
-  log_level: warning
+  log_level: critical
   do_train: True
   overwrite_output_dir: False
   max_steps: 10 

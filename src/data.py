@@ -22,23 +22,23 @@ class CompressionTokenizer():
         self.args = args
         self.tokenizer = tokenizer
        
-        # Load dataset
+        # Load original dataset
         self.dataset = load_dataset(args.data.dataset_name,
             split=args.data.load_split,
             cache_dir=args.data.cache_dir,
             num_proc=args.data.num_proc)
         
-        # Adjust size of dataset 
+        # Resize dataset (i.e. sample a subset of size args.data.size)
         if args.data.resize:
             self.dataset = self.dataset.shuffle(args.training.data_seed).select(range(args.data.size))
 
-        # Adjust block size of tokenizer
+        # Resize block size for tokenizer (critical if tokenizer.model_max_length too large for GPU memory)
         if args.model.resize:
             self.block_size = args.model.block_size
         else:
             self.block_size = tokenizer.model_max_length
         
-        # Split into train/val
+        # Split into train and validation sets
         split = self.dataset.train_test_split(test_size=args.data.val_size)
         self.train_set, self.validation_set = split["train"], split["test"]
 
@@ -47,24 +47,6 @@ class CompressionTokenizer():
             'train': self.train_set,
             'val': self.validation_set
         })
-
-    def group_texts(self, 
-                    examples: Dict[str, str], # ?
-                    ) -> Dict:
-        # Concatenate all texts.
-        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-            # customize this part to your needs.
-        total_length = (total_length // self.block_size) * self.block_size
-        # Split by chunks of max_len.
-        result = {
-            k: [t[i : i + self.block_size] for i in range(0, total_length, self.block_size)]
-            for k, t in concatenated_examples.items()
-        }
-        result["labels"] = result["input_ids"].copy()
-
-        return result
 
     def tokenize(self, 
                  examples: Dict[str, str], # ? 
@@ -82,15 +64,17 @@ class CompressionTokenizer():
         )
         seqs = {
               "output_ids": cmps["input_ids"][:, self.args.compression.cmp_len-self.args.compression.overlap:],
-              "output_attn_mask":cmps["attention_mask"][:,self.args.compression.cmp_len-self.args.compression.overlap:],
+              "output_attn_mask": cmps["attention_mask"][:,self.args.compression.cmp_len-self.args.compression.overlap:],
             }
         cmps["input_ids"] = cmps["input_ids"][:,:self.args.compression.cmp_len]
         cmps["attention_mask"] = cmps["attention_mask"][:,:self.args.compression.cmp_len]
 
+        seqs["labels"] = cmps["input_ids"].clone() # this was required by the trainer otherwise it crashed
+
         return {**cmps, **seqs}
 
     def get_data_loaders(self, 
-                         ) -> Tuple[Dataset, Dataset, DataLoader, DataLoader]:
+                         ) -> Tuple[DatasetDict, DataLoader, DataLoader]:
         """
         Get data loaders.
         """
@@ -109,4 +93,4 @@ class CompressionTokenizer():
         data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=100, shuffle=True)
         val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=100, shuffle=True)
 
-        return tokenized_dataset, tokenized_dataset["train"], tokenized_dataset["val"], data_loader, val_loader
+        return tokenized_dataset, data_loader, val_loader

@@ -1,7 +1,7 @@
 """
 Based on 
     - https://huggingface.co/docs/transformers/v4.29.1/en/main_classes/trainer#transformers.TrainingArguments 
-    - https://github.com/jayelm/gisting/blob/main/src/arguments.py (thanks for the `dirty hack' :p)
+    - https://github.com/jayelm/gisting/blob/main/src/arguments.py
     - https://github.com/grantsrb/ctx_cmp/tree/master 
 
 Script currently contains three types of arguments:
@@ -9,6 +9,8 @@ Script currently contains three types of arguments:
     - CustomTrainingArguments (Based on HuggingFace TrainingArguments)
     - DataArguments
     - CompressionArguments: Custom arguments related to the token compression
+
+To overwrite default values, use ./config/config.yaml
 """
 import logging
 import socket
@@ -140,7 +142,7 @@ class ModelArguments:
 @dataclass
 class CustomTrainingArguments(TrainingArguments):
     """
-    Training Arguments with type fixes (TODO: need to adjust the types to strs so that they typecheck works).
+    Training Arguments (non-exhaustive, currently only including relevant ones + custome, missing args will default to HF TrainingArguments)
     """
     output_dir: str = field(
         default="../output_dir",
@@ -371,15 +373,15 @@ def global_setup(args: DictConfig) -> Arguments:
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
 
-    # uncomment once running
+    #  uncomment once running
     # Log on each process the small summary:
-    # logger.warning(
-    #     f"Process rank: {args.training.local_rank}, device: {args.training.device}, "
-    #     f"n_gpu: {args.training.n_gpu}"
-    #     f" distributed training: {bool(args.training.local_rank != -1)}, 16-bits "
-    #     f"training: {args.training.fp16}, bf16 training: {args.training.bf16}"
-    # )
-    # logger.info(f"Training/evaluation parameters {args.training}")
+    logger.warning(
+        f"Process rank: {args.training.local_rank}, device: {args.training.device}, "
+        f"n_gpu: {args.training.n_gpu}"
+        f" distributed training: {bool(args.training.local_rank != -1)}, 16-bits "
+        f"training: {args.training.fp16}, bf16 training: {args.training.bf16}"
+    )
+    logger.info(f"Training/evaluation parameters {args.training}")
 
 
     return args

@@ -91,13 +91,12 @@ def main(args: DictConfig) -> None:
     # Set seed before initializing model.
     set_seed(args.training.seed)
 
-    # 3 Tokenizer
+    # 1 Tokenizer
     tokenizer_kwargs = {
         "cache_dir": args.model.cache_dir,
         "use_fast": args.model.use_fast_tokenizer,
         "truncation_side": args.model.truncation_side,
     }
-
     if args.model.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(
             args.model.tokenizer_name, **tokenizer_kwargs
@@ -107,20 +106,12 @@ def main(args: DictConfig) -> None:
             args.model.model_name_or_path, **tokenizer_kwargs
         )
 
-    # 4 Datasets
+    # 2 Datasets
     tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
-    tokenized_dataset, trainset, valset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
-    lm_datasets = tokenized_dataset.map( # hack for now gotta fix this later
-        cmpr_tokenizer.group_texts,
-        batched=True,
-        batch_size=1,
-        num_proc=4,
-    )
-    print(tokenized_dataset['train'][0])
-    print(lm_datasets['train'][0])
+    tokenized_dataset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
 
-    # 5 Model and config
+    # 3 Model and config
     config_kwargs = {
         "cache_dir": args.model.cache_dir,
     }
@@ -128,7 +119,6 @@ def main(args: DictConfig) -> None:
         config = AutoConfig.from_pretrained(
             args.model.model_name_or_path, **config_kwargs
         )
-    
     # get model
     is_bloom = "bloomz" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
     is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-') # for debugging on cpu / fast inference
@@ -150,12 +140,12 @@ def main(args: DictConfig) -> None:
     else:
         raise ValueError(f"AutoConfig not set")
     
-    # 6 Training
+    # 4 Training
     trainer = Trainer(
         model=model,
         args=args.training,
-        train_dataset=lm_datasets["train"],
-        eval_dataset=lm_datasets["val"],
+        train_dataset=tokenized_dataset["train"],
+        eval_dataset=tokenized_dataset["val"],
     )   
 
     trainer.train()
