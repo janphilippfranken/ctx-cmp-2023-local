@@ -15,12 +15,14 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         super().__init__()
         self.args = args
         self.model = model_cls
-        print(self.model)
         self.t = self.model.transformer
-        print(self.t)
-        tembs = self.t.get_input_embeddings().weight
-        print(tembs.shape)
-
+        self.tembs = self.t.get_input_embeddings().weight # torch.Size([vocab_size , dimensionality of the embeddings/hidden states])
+        self.hsize = self.tembs.shape[1] # dimensionality of the embeddings/hidden states (eg 768 in gpt2)
+        # create new embedding
+        self.embds = torch.nn.Embedding(
+            self.args.compression.n_cmps + self.args.compression.n_tsks + int(self.args.sep_cmpr), self.hsize
+        )
+        
 
     @property
     def device(self) -> torch.device:
