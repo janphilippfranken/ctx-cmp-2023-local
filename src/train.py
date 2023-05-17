@@ -29,7 +29,6 @@ from transformers import (
     AutoConfig,
     AutoModelForCausalLM,
     Trainer, 
-    TrainingArguments,
     set_seed,
 )
 from transformers.trainer_utils import get_last_checkpoint
@@ -38,6 +37,7 @@ from transformers.utils.versions import require_version
 
 from arguments import Arguments, global_setup
 from data import CompressionTokenizer
+from model import SentenceAutoEncoder
 
 # Will error if the minimal version of Transformers is not installed. 
 check_min_version("4.28.0.dev0")
@@ -124,33 +124,41 @@ def main(args: DictConfig) -> None:
     is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-') # for debugging on cpu / fast inference
 
     if is_bloom:
-        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
+        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
+                                                         torch_dtype=torch.floa32 if args.model.dtype == 'float32' else torch.float16,
+        )                                                
     elif is_gpt2:
-        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path)
-    else:
-        raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
-    if args.model.pretrained:
-        model = model_cls.from_pretrained(
-            args.model.model_name_or_path,
-            from_tf=bool(".ckpt" in args.model.model_name_or_path),
-            config=config,
-            cache_dir=args.model.cache_dir,
-            revision=args.model.model_revision,
+        model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
+                                                         torch_dtype=torch.floa32 if args.model.dtype == 'float32' else torch.float16,
         )
     else:
-        raise ValueError(f"AutoConfig not set")
+        raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
     
-    # 4 Training
-    trainer = Trainer(
-        model=model,
-        args=args.training,
-        train_dataset=tokenized_dataset["train"],
-        eval_dataset=tokenized_dataset["val"],
-    )   
+    model = SentenceAutoEncoder(model_cls, args)
+    
 
-    trainer.train()
-    eval_results = trainer.evaluate()
-    print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    # if args.model.pretrained:
+    #     model = model_cls.from_pretrained(
+    #         args.model.model_name_or_path,
+    #         from_tf=bool(".ckpt" in args.model.model_name_or_path),
+    #         config=config,
+    #         cache_dir=args.model.cache_dir,
+    #         revision=args.model.model_revision,
+    #     )
+    # else:
+    #     raise ValueError(f"AutoConfig not set")
+    
+    # # 4 Training
+    # trainer = Trainer(
+    #     model=model,
+    #     args=args.training,
+    #     train_dataset=tokenized_dataset["train"],
+    #     eval_dataset=tokenized_dataset["val"],
+    # )   
+
+    # trainer.train()
+    # eval_results = trainer.evaluate()
+    # print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":
     main()

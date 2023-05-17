@@ -1,123 +1,53 @@
-from abc import ABC, abstractmethod
-from typing import (
-    Dict,
-    Optional,
-    Any,
-)
-
 import torch
+from typing import Dict, Any, Optional
+
+from transformers import AutoModelForCausalLM
+from omegaconf.dictconfig import DictConfig
+from templates.model import AbstractSentenceAutoEncoder
 
 
-# Abstract model classes
-class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
-    """
-    Abstract base class for a sentence autoencoder.
-    """
-    @abstractmethod
-    def __init__(self):
+class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
+
+    def __init__(self, 
+                 model_cls: AutoModelForCausalLM,
+                 args: DictConfig,
+                 ):
         super().__init__()
+        self.args = args
+        self.model = model_cls
+        print(self.model)
+        self.t = self.model.transformer
+        print(self.t)
+        tembs = self.t.get_input_embeddings().weight
+        print(tembs.shape)
+
 
     @property
-    @abstractmethod
     def device(self) -> torch.device:
-        """
-        Returns the device of the hf_model.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
+        return self.transformer_model.device
+    
     def add_attrs(self, new_attrs: Dict[str, Any]) -> None:
-        """
-        Adds new attributes to the model.
-        """
-        raise NotImplementedError()
+        pass
 
-    @abstractmethod
     def get_embeddings(self) -> torch.tensor:
-        """
-        Returns a reference to the transformer embeddings.
-        """
-        raise NotImplementedError()
+        pass
 
-    @abstractmethod
-    def add_embeddings(self, n_embs: int) -> None:
-        """
-        Adds or resizes hf_model token embeddings shape to n + n_embs.
-        """
-        raise NotImplementedError()
+    def add_embeddings(self,
+                       n_embs: int) -> None:
+        pass
 
-    @abstractmethod
     def compress(self,
                  input_ids: torch.LongTensor,
                  attention_mask: torch.LongTensor,
                  *args,
                  **kwargs) -> torch.tensor:
-        """
-        Compresses the input ids to a single vector.
-        """
-        raise NotImplementedError()
+        pass
 
-    @abstractmethod
-    def forward(self,
-                data: Dict[str, torch.LongTensor],
-                tforce: bool) -> torch.tensor:
-        """
-        Runs the forward pass.
-        """
-        raise NotImplementedError()
+    def forward(self):
+        pass
 
-    @abstractmethod
-    def infer(self,
-              data: Dict[str, torch.LongTensor],
-              pred_len: Optional[int],
-              rmb_task: bool,
-              temperature: float,
-              ret_logits: bool,
-              ret_embs: bool,
-              cmpr: Optional[torch.tensor]) -> Dict[str, torch.tensor]:
-        """
-        Performs inference without teacher forcing.
-        """
-        raise NotImplementedError()
+    def infer(self):
+        pass
 
-    @abstractmethod
-    def causal_lm(self,
-                  input_ids: torch.LongTensor,
-                  inputs_embeds: torch.FloatTensor,
-                  tforce: bool,
-                  seed_len: Optional[int],
-                  pred_len: Optional[int],
-                  ret_logits: bool,
-                  temperature: float) -> torch.tensor:
-        """
-        Performs traditional causal language modeling with or without teacher forcing.
-        """
-        raise NotImplementedError()
-    
-
-class AbstractLossWrapper(ABC, torch.nn.Module):
-    """
-    This class wraps the model to keep the loss calculations distributed
-    on all GPUs. Otherwise one gpu is overloaded with computational
-    costs.
-    """
-    @abstractmethod
-    def __init__(self):
-        super().__init__()
-    
-    @abstractmethod
-    def forward(self, 
-                data: Dict[str, torch.LongTensor],
-                seq_len: int,
-                ret_preds: bool,
-                tforce: bool,
-                gen_targs: bool,
-                gen_ids: bool,
-                no_grad: bool,
-                kl_scale: float, 
-                temperature: float, 
-                top_k: Optional[int]) -> Dict[str, torch.tensor]:
-        """
-        Runs forward pass.
-        """
-        raise NotImplementedError()
+    def causal_lm(self):
+        pass

@@ -16,7 +16,7 @@ import logging
 import socket
 import sys
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Any
 
 import datasets
 import transformers
@@ -137,6 +137,43 @@ class ModelArguments:
             )
         },
     )
+    dtype: str = field(
+        default="float16",
+        metadata={
+            "help": (
+                "Floating point precision."
+            )
+        },
+    )
+    device_map : str = field(
+        default="auto",
+        metadata={
+            "help": (
+                "Determines whether you want to use model parallel or not."
+            )
+        },
+    )
+    cmp_layer: Any = field(
+        default="half",
+        metadata={
+            "help": (
+                "The layer from the transformer to use for the compression"
+                "token. Str argument can be 'half' denoting the middle layer"
+                "of the transformer. None defaults to last layer. Int indexes layer."
+            )
+        },
+    )
+    rmb_task: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "If true, will assume that there is an auxiliary"
+                "memory reconstruction objective."
+            )
+        },
+    )
+    
+
 
 
 @dataclass
@@ -189,6 +226,62 @@ class CustomTrainingArguments(TrainingArguments):
             )
         },
     )
+    n_cmps: int = field(
+        default=3,
+        metadata={
+            "help": (
+                "Number of compression tokens."
+            )
+        },
+    )
+    n_tsks: int = field(
+        default=2,
+        metadata={
+            "help": (
+                "The number of task tokens. for the task ids, rmb is 1, sos is 0."
+            )
+        },
+    )
+    train_embs: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "If false, uses data of transformer embedding parameters"
+                "instead of embedding parameters directly."
+            )
+        },
+    )
+    proj_cmpr: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "If true, projects the cmpr' representations using a linear"
+                "weight matrix before using them as input to the forward/"
+                "auxiliary tasks."
+            )
+        },
+    )
+    proj_hid_mult: Optional[int] = field(
+        default=None,
+        metadata={
+            "help": (
+                "If an integer value is argued, the projection will use a 2"
+                "layer neural net instead of a single linear projection."
+                "This argument specifies the size of the hidden layer as"
+                "proj_hid_mult*h_size"
+            )
+        },
+    )
+    sep_cmpr: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "If true, an additional embedding is inserted between"
+                "the cmpr token and the compression sequence."
+            )
+        },
+    )
+
 
     _run_post_init: bool = False
 

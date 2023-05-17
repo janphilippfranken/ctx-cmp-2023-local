@@ -24,10 +24,10 @@ class CompressionTokenizer():
        
         # Load original dataset
         self.dataset = load_dataset(args.data.dataset_name,
-            split=args.data.load_split,
-            cache_dir=args.data.cache_dir,
-            num_proc=args.data.num_proc)
-        
+                                    split=args.data.load_split,
+                                    cache_dir=args.data.cache_dir,
+                                    num_proc=args.data.num_proc)
+
         # Resize dataset (i.e. sample a subset of size args.data.size)
         if args.data.resize:
             self.dataset = self.dataset.shuffle(args.training.data_seed).select(range(args.data.size))
@@ -49,7 +49,7 @@ class CompressionTokenizer():
         })
 
     def tokenize(self, 
-                 examples: Dict[str, str], # ? 
+                 examples: Dict[str, str], # not sure if str, str is correct
                 ) -> Dict:
         """
         Tokenize the examples.
@@ -90,7 +90,7 @@ class CompressionTokenizer():
         else:
              raise NotImplementedError(f"Unknown dataset name {self.args.data.dataset_name}") # TODO: @add other datasets + funcs
         # Create data loaders
-        data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=100, shuffle=True)
-        val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=100, shuffle=True)
+        data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=self.args.data.batch_size, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=self.args.data.batch_size, shuffle=True)
 
         return tokenized_dataset, data_loader, val_loader
