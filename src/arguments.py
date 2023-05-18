@@ -281,6 +281,14 @@ class CustomTrainingArguments(TrainingArguments):
             )
         },
     )
+    tforce: bool = field(
+        default=True,
+        metadata={
+            "help": (
+                "If true, will use teacher forcing during training."
+            )
+        },
+    )
 
 
     _run_post_init: bool = False

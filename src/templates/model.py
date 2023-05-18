@@ -64,9 +64,24 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
     @abstractmethod
     def forward(self,
                 data: Dict[str, torch.LongTensor],
-                tforce: bool) -> torch.tensor:
+                tforce: bool) -> torch.tensor: # shape: [batch_size, seq_len + ?, n_embs]
         """
-        Runs the forward pass.
+        Args:
+          data: dict
+            "input_ids": LongTensor of shape [args.data.batch_size, args.compression.cmp_len]
+                the token indices of the input sequence. The CMP token
+                should be appended to the end of each sentence.
+            "attention_mask": LongTensor of shape [args.data.batch_size, args.compression.cmp_len]
+                attention mask for padding purposes. 0s mean padding.
+            "output_ids": LongTensor of shape [args.data.batch_size, args.compression.cmp_len + ?]
+                the token indices of the target sequence. An EOS token
+                should be appended to the end of each sentence
+            "output_attn_mask": LongTensor of shape [args.data.batch_size, args.compression.cmp_len + ?]
+                attention mask for padding purposes. 0s mean padding.
+          tforce: bool
+            if true, uses teacher forcing
+        Returns:
+            preds: tensor [args.data.batch_size, args.compression.cmp_len + ?, n_embs]
         """
         raise NotImplementedError()
 

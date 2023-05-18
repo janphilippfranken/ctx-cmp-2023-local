@@ -92,5 +92,5 @@ class CompressionTokenizer():
         # Create data loaders
         data_loader = torch.utils.data.DataLoader(tokenized_dataset['train'], batch_size=self.args.data.batch_size, shuffle=True)
         val_loader = torch.utils.data.DataLoader(tokenized_dataset['val'], batch_size=self.args.data.batch_size, shuffle=True)
-
+    
         return tokenized_dataset, data_loader, val_loader
