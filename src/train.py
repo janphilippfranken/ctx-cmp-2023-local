@@ -125,17 +125,18 @@ def main(args: DictConfig) -> None:
 
     if is_bloom:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
-                                                         torch_dtype=torch.floa32 if args.model.dtype == 'float32' else torch.float16,
+                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16,
         )                                                
     elif is_gpt2:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
-                                                         torch_dtype=torch.floa32 if args.model.dtype == 'float32' else torch.float16,
+                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16,
         )
     else:
         raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
     
+
     model = SentenceAutoEncoder(model_cls, args)
-    
+ 
 
     # if args.model.pretrained:
     #     model = model_cls.from_pretrained(

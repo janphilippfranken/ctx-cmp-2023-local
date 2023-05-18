@@ -138,7 +138,7 @@ class ModelArguments:
         },
     )
     dtype: str = field(
-        default="float16",
+        default="float32",
         metadata={
             "help": (
                 "Floating point precision."

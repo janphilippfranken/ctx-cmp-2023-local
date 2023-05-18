@@ -50,13 +50,13 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
         Compresses the input ids to a single vector.
 
         Args: 
-            input_ids: LongTensor (B,S)
+            input_ids: LongTensor of shape [args.data.batch_size, args.compression.cmp_len]
                 the token indices of the input sequence. The CMP token
                 should be appended to the end of each sentence.
-            attention_mask: LongTensor (B,S)
+            attention_mask: LongTensor of shape [args.data.batch_size, args.compression.cmp_len]
                 attention mask for padding purposes. 0s mean padding.
         Returns:
-            cmpr: torch tensor (B,1,H)
+            cmpr: torch.tensor of shape [args.data.batch_sizee, 1, n_embs)
                 the compressed representations
         """
         raise NotImplementedError()
