@@ -104,30 +104,28 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         if not self.args.training.tforce:
             raise NotImplementedError(f"Not tfoce has to be implemented")
         model_embs = self.get_embeddings()  
-        out_embs =  model_embs(data["output_ids"])
-        sos = self.embs.weight[self.tsk_ids[0]][None,None] # sos m
+        out_embs =  model_embs(data["output_ids"]) # shape (batch_size, seq_len, hidden_size)
+        sos = self.embs.weight[self.tsk_ids[0]][None,None] # sos token
         local_rank = self.args.training.local_rank if self.args.training.local_rank != -1 else "cpu" # uncomment / remove for gpu
-        out_embs = torch.cat(
+        out_embs = torch.cat( 
             [
                 cmpr.to(local_rank),
                 sos.repeat(len(cmpr),1,1),
                 out_embs.to(local_rank),
             ],
             dim=1,
-        )
-        npad = out_embs.shape[1] - data["output_attn_mask"].shape[1]
+        ) # shape (batch_size, n_cmps + sos + seq_len, hidden_size)
+        npad = out_embs.shape[1] - data["output_attn_mask"].shape[1] # int = (n_cmps + sos + seq_len) - seq_len
         attn = F.pad(
             data["output_attn_mask"], 
             (npad, 0), 
             value=1,
-        )
-        preds = self.model(inputs_embeds=out_embs, attention_mask=attn).logits
-        preds = preds[:,cmpr.shape[1]:-1]
+        ) # shape (batch_size, n_cmps + sos + seq_len)
+        preds = self.model(inputs_embeds=out_embs, attention_mask=attn).logits # shape [batch_size, n_cmps + sos + seq_len, vocab_size]
+        preds = preds[:,cmpr.shape[1]:-1] # shape [batch_size, seq_len, vocab_size]
 
         return preds
 
-
-    
 
 
     def infer(self):
