@@ -19,16 +19,9 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
 
     @property
     @abstractmethod
-    def device(self) -> torch.device:
+    def get_device(self) -> torch.device:
         """
         Returns the device of the hf_model.
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def add_attrs(self, new_attrs: Dict[str, Any]) -> None:
-        """
-        Adds new attributes to the model.
         """
         raise NotImplementedError()
 
@@ -41,9 +34,9 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
 
     @abstractmethod
     def add_embeddings(self, 
-                       n_embs: int) -> None:
+                       new_embs: int) -> None:
         """
-        Adds or resizes hf_model token embeddings shape to n + n_embs.
+        Adds or resizes hf_model token embeddings shape to n_embs + new_embs.
         """
         raise NotImplementedError()
 
@@ -55,6 +48,16 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
                  **kwargs) -> torch.tensor:
         """
         Compresses the input ids to a single vector.
+
+        Args: 
+            input_ids: LongTensor (B,S)
+                the token indices of the input sequence. The CMP token
+                should be appended to the end of each sentence.
+            attention_mask: LongTensor (B,S)
+                attention mask for padding purposes. 0s mean padding.
+        Returns:
+            cmpr: torch tensor (B,1,H)
+                the compressed representations
         """
         raise NotImplementedError()
 
