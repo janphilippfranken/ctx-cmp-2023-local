@@ -21,6 +21,8 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         self.model = model_cls
         self.t = self.model.transformer
 
+        self.local_rank = self.args.training.local_rank if self.args.training.local_rank != -1 else "cpu" # uncomment / remove for gpu
+
         self.wte = self.t.get_input_embeddings().weight  # token embedding weights (`wte'; torch.Size([vocab_size, n_embs]))
         self.n_embs = self.wte.shape[1]
         
@@ -45,6 +47,7 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         output_attn_mask = torch.LongTensor([data['output_attn_mask'], data['output_attn_mask'], data['output_attn_mask'], data['output_attn_mask']])
 
         self.forward({'input_ids': input_ids, 'attention_mask': attention_masks, 'output_ids': output_ids, 'output_attn_mask': output_attn_mask})
+        self.infer({'input_ids': input_ids, 'attention_mask': attention_masks, 'output_ids': output_ids, 'output_attn_mask': output_attn_mask})
     
     @property
     def get_device(self) -> torch.device:
@@ -90,7 +93,7 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         layer_dict = {'half': n_layers//2, None: -1}
         layer = self.args.model.cmp_layer
         chosen_layer = layer_dict.get(layer, layer)
-        cmpr = fx['hidden_states'][chosen_layer][:,-self.args.training.n_cmps:] # shape: (batch_size, n_cmps, hidden_size) where n_cmps are the final n_cmps hidden states of the chosen layer
+        cmpr = fx['hidden_states'][chosen_layer][:,-self.args.training.n_cmps:] # shape: (batch_size, n_cmps, n_embs) where n_cmps are the final n_cmps hidden states of the chosen layer
 
         return cmpr
 
@@ -104,17 +107,16 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         if not self.args.training.tforce:
             raise NotImplementedError(f"Not tfoce has to be implemented")
         model_embs = self.get_embeddings()  
-        out_embs =  model_embs(data["output_ids"]) # shape (batch_size, seq_len, hidden_size)
+        out_embs =  model_embs(data["output_ids"]) # shape (batch_size, seq_len, n_embs)
         sos = self.embs.weight[self.tsk_ids[0]][None,None] # sos token
-        local_rank = self.args.training.local_rank if self.args.training.local_rank != -1 else "cpu" # uncomment / remove for gpu
         out_embs = torch.cat( 
             [
-                cmpr.to(local_rank),
+                cmpr.to(self.local_rank),
                 sos.repeat(len(cmpr),1,1),
-                out_embs.to(local_rank),
+                out_embs.to(self.local_rank),
             ],
             dim=1,
-        ) # shape (batch_size, n_cmps + sos + seq_len, hidden_size)
+        ) # shape (batch_size, n_cmps + sos + seq_len, n_embs)
         npad = out_embs.shape[1] - data["output_attn_mask"].shape[1] # int = (n_cmps + sos + seq_len) - seq_len
         attn = F.pad(
             data["output_attn_mask"], 
@@ -125,11 +127,6 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         preds = preds[:,cmpr.shape[1]:-1] # shape [batch_size, seq_len, vocab_size]
 
         return preds
-
-
-
-    def infer(self):
-        pass
 
     def causal_lm(self):
         pass

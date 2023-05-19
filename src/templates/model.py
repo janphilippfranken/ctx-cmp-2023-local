@@ -73,29 +73,15 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
                 should be appended to the end of each sentence.
             "attention_mask": LongTensor of shape [args.data.batch_size, args.compression.cmp_len]
                 attention mask for padding purposes. 0s mean padding.
-            "output_ids": LongTensor of shape [args.data.batch_size, args.compression.cmp_len + ?]
+            "output_ids": LongTensor of shape [args.data.batch_size, args.compression.seq_len]
                 the token indices of the target sequence. An EOS token
                 should be appended to the end of each sentence
-            "output_attn_mask": LongTensor of shape [args.data.batch_size, args.compression.cmp_len + ?]
+            "output_attn_mask": LongTensor of shape [args.data.batch_size, args.compression.seq_len]
                 attention mask for padding purposes. 0s mean padding.
           tforce: bool
             if true, uses teacher forcing
         Returns:
-            preds: tensor [args.data.batch_size, args.compression.cmp_len + ?, n_embs]
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def infer(self,
-              data: Dict[str, torch.LongTensor],
-              pred_len: Optional[int],
-              rmb_task: bool,
-              temperature: float,
-              ret_logits: bool,
-              ret_embs: bool,
-              cmpr: Optional[torch.tensor]) -> Dict[str, torch.tensor]:
-        """
-        Performs inference without teacher forcing.
+            preds: tensor [batch_size, seq_len, vocab_size]
         """
         raise NotImplementedError()
 
