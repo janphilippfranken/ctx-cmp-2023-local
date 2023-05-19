@@ -39,15 +39,6 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         self.cmp_ids = list(range(args.training.n_cmps)) 
         self.tsk_ids = list(range(args.training.n_cmps, args.training.n_cmps + args.training.n_tsks))
         self.sep_id = args.training.n_tsks + args.training.n_cmps  
-
-        # data = {'input_ids': [2953, 262, 3726, 286, 262, 10037, 444, 8200, 5701, 1097, 16009, 2275, 11999, 373, 19233, 656, 262, 23327, 13735, 543], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'output_ids': [2950, 2406, 739, 262, 6355, 4811, 4634, 34756, 416, 23327, 447, 247, 82, 1353, 2974, 286, 4542, 13, 2275, 11999, 1719, 550, 257, 2383, 2106, 287, 5584, 6332, 340, 373, 3066, 326, 21534, 544, 290, 2275, 11999, 561, 12082, 3386, 290, 2962, 319, 36467, 13, 632, 373, 257, 640, 618, 23327, 373, 14771, 355, 881, 1637, 656, 36467, 355, 584, 2706, 547, 14771, 287, 19639, 352, 13, 5856, 777, 10861, 812, 2275, 11999, 11949, 43737, 48590, 28607, 445, 72, 2727, 257, 2168, 286, 7903, 6300, 286, 3227, 23327, 5006, 351, 12476, 319, 262, 19755, 290, 262, 23134, 11, 290, 2275], 'output_attn_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'labels': [2953, 262, 3726, 286, 262, 10037, 444, 8200, 5701, 1097, 16009, 2275, 11999, 373, 19233, 656, 262, 23327, 13735, 543]}
-        # input_ids = torch.LongTensor([data['input_ids'], data['input_ids']])
-        # attention_masks = torch.LongTensor([data['attention_mask'], data['attention_mask']])
-        # output_ids = torch.LongTensor([data['output_ids'], data['output_ids']])
-        # output_attn_mask = torch.LongTensor([data['output_attn_mask'], data['output_attn_mask']])
-
-        # self.forward({'input_ids': input_ids, 'attention_mask': attention_masks, 'output_ids': output_ids, 'output_attn_mask': output_attn_mask})
-        # self.causal_lm(input_ids, attention_masks)
     
     @property
     def get_device(self) -> torch.device:
@@ -138,7 +129,7 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
     def causal_lm(self,
                   input_ids: torch.LongTensor,
                   attention_mask: torch.LongTensor,
-                  inputs_embeds: Optional[torch.FloatTensor] = None, # what's the point of this?
+                  inputs_embeds: Optional[torch.FloatTensor] = None, # TODO: what is the point of this?
                   ) -> torch.tensor:
         """
         Performs traditional causal language modeling with or

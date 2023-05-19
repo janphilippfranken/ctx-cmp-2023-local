@@ -1,37 +1,37 @@
+# refer to arguments.py for full details
 hydra:
   run:
-    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
-  # sweep:
-  #   dir: .
-  #   subdir: .
-  # job_logging:
-  #   root:
-  #     level: INFO
+    dir: ./outputs/${now:%Y-%m-%d}/${now:%H-%M-%S} # directory where the configs for each run will be saved (for reproducibility etc)
+  sweep: # if multiple param combinations are provided, running the application once for each combination (need to check if we can utilise this later)
+    dir: .
+    subdir: .
+  job_logging:
+    root:
+      level: CRITICAL # set to critical for debugging 
   job:
     env_set:
       TOKENIZERS_PARALLELISM: "false" 
-      CUDA_VISIBLE_DEVICES: "0,1"  # make sure to keep this number small to avoid crash on ccn!
-      WANDB_DISABLED: true
+      CUDA_VISIBLE_DEVICES: "0,1"  # make sure to keep this number small to avoid crash on ccn (HF Trainer will automatically utilise all GPUs and crashed last time when i forgot to export this)
+      WANDB_DISABLED: true # deprecated soon, need to change but sufficient for now...
 
 defaults:
-  - base_config
+  - base_config # see line 471 in arguments.py 
   - _self_
 
 model:
-  model_name_or_path: distilgpt2 # bigscience/bloomz-560m # change to smaller model for debugging
-  cache_dir: .cache/ # only uncomment this if not working on ccn otherwise crash in home directory!
-  resize: True # if we want to resize the model block size
-  block_size: 8 # new block size
+  model_name_or_path: distilgpt2 # for debugging, change to e.g. bigscience/bloomz-560m for main experiment
+  cache_dir: .cache/ # set this to your /data/{jphilipp, grantsrb}/... directory on ccn, will crash if not enough space on home directory
+  resize: True # resize model block size if original block size too large for our GPUs 
+  block_size: 8 # if resize=True, pick new block size (currently small number for debugging)
 
 training:
-  generation_max_length: 28
-  log_level: critical
+  log_level: critical 
   do_train: True
   overwrite_output_dir: False
-  max_steps: 10 
+  max_steps: 10 # set this to small number for debugging, default is -1 (see arguments.py)
 
 data:
-  dataset_name: stas/openwebtext-10k  # the dataset 
+  dataset_name: stas/openwebtext-10k  # picked small dataset for debugging
   cache_dir: .cache/  # where we cache the dataset (be careful not to cache in home directory on ccn!)
   resize: True  # if we want to resize the dataset
   size: 100   # size of the random subset from the resized dataset

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import (
     Dict,
     Optional,
-    Any,
 )
 
 import torch
@@ -64,7 +63,7 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
     @abstractmethod
     def forward(self,
                 data: Dict[str, torch.LongTensor],
-                ) -> torch.tensor: # shape: [batch_size, seq_len + ?, n_embs]
+                ) -> torch.tensor: # shape: [batch_size, seq_len, n_embs]
         """
         Args:
           data: dict

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Training script, adapted from huggingface's run_clm.py example
+Training script, adapted from huggingface's run_clm.py example and from https://github.com/jayelm/gisting
 """
 import logging
 import os
@@ -22,11 +22,10 @@ import os
 import hydra
 import torch
 import math
-from datasets import DatasetDict, load_dataset
 from omegaconf.dictconfig import DictConfig
 from transformers import (
     AutoTokenizer,
-    AutoConfig,
+    AutoConfig, # need to add later
     AutoModelForCausalLM,
     Trainer, 
     set_seed,
@@ -59,7 +58,7 @@ SOS = "|<SOS>|"
 def main(args: DictConfig) -> None:
     args: Arguments = global_setup(args)
 
-    # Detecting last checkpoint.
+    # Detecting last checkpoint (currently not utilised).
     last_checkpoint = None
     if (
         os.path.isdir(args.training.output_dir)
@@ -105,48 +104,59 @@ def main(args: DictConfig) -> None:
         tokenizer = AutoTokenizer.from_pretrained(
             args.model.model_name_or_path, **tokenizer_kwargs
         )
+    # check for special tokens (need to chat how this relates to the different models' tokenizers and make it more clear)
+    num_added = 0
+    if tokenizer.pad_token is None:
+        print(f"No Pad Token in {args.model.model_name_or_path}")
+        print(f"EOS: {tokenizer.eos_token}")
+        print(f"CLS: {tokenizer.cls_token}")
+        print(f"SEP: {tokenizer.sep_token}")
+        if tokenizer.eos_token is not None: # this is unclear 
+            tokenizer.add_special_tokens(
+                {"pad_token": tokenizer.eos_token}
+            )
+        else:
+            num_added += tokenizer.add_special_tokens(
+                {"pad_token": "|<PAD>|"}
+            )
+         #num_added += tokenizer.add_special_tokens({ ????
+        #    "pad_token": "|<PAD>|",
+        #    "eos_token": "|<EOS>|",
+        #})
+
+    args.model.pad_token = tokenizer.pad_token
 
     # 2 Datasets
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
     cmpr_tokenizer = CompressionTokenizer(tokenizer, args)
     tokenized_dataset, data_loader, val_loader = cmpr_tokenizer.get_data_loaders()
 
-    # 3 Model and config
-    config_kwargs = {
-        "cache_dir": args.model.cache_dir,
-    }
-    if args.model.model_name_or_path:
-        config = AutoConfig.from_pretrained(
-            args.model.model_name_or_path, **config_kwargs
-        )
-    # get model
+    # 3 Model 
     is_bloom = "bloomz" in args.model.model_name_or_path.lower().replace('/', '-').split('-')
-    is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-') # for debugging on cpu / fast inference
+    is_gpt2 = "distilgpt2" in args.model.model_name_or_path.lower().replace('/', '-').split('-') # for debugging on cpu 
 
     if is_bloom:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
-                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16,
-        )                                                
+                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16)                                                
     elif is_gpt2:
         model_cls = AutoModelForCausalLM.from_pretrained(args.model.model_name_or_path,
-                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16,
-        )
+                                                         torch_dtype=torch.float32 if args.model.dtype == 'float32' else torch.float16)
     else:
         raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
     
     custom_lm = SentenceAutoEncoder(model_cls, args)
+    if num_added > 0: custom_lm.add_embeddings(num_added) # resize vocab size if new special tokens have been added
 
     # 4 Training
-    trainer = Trainer(
-        model=custom_lm.model,
+    trainer = Trainer( # TODO: understand what we need to customise https://huggingface.co/blog/pytorch-ddp-accelerate-transformers
+        model=custom_lm.model, # this is prob wrong as its just the original tranformer? TODO: check. NOTE: it has the new (embs) layers added, so def architecture has changed now.
         args=args.training,
         train_dataset=tokenized_dataset["train"],
         eval_dataset=tokenized_dataset["val"],
     )   
 
-    # trainer.train()
-    # eval_results = trainer.evaluate()
-    # print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    trainer.train()
+    eval_results = trainer.evaluate()
+    print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":
     main()

@@ -172,8 +172,14 @@ class ModelArguments:
             )
         },
     )
-    
-
+    pad_token: Optional[str] = field(
+        default="|<PAD>|",
+        metadata={
+            "help": (
+                "Padding token."
+            )
+        },
+    )
 
 
 @dataclass
@@ -217,7 +223,7 @@ class CustomTrainingArguments(TrainingArguments):
         },
     )
     max_steps: Optional[int] = field(
-        default=10,
+        default=-1,
         metadata={
             "help": (
                 "If set to a positive number, the total number of training steps to perform."
