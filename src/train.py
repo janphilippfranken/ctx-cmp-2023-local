@@ -144,9 +144,9 @@ def main(args: DictConfig) -> None:
         eval_dataset=tokenized_dataset["val"],
     )   
 
-    trainer.train()
-    eval_results = trainer.evaluate()
-    print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    # trainer.train()
+    # eval_results = trainer.evaluate()
+    # print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":
     main()
