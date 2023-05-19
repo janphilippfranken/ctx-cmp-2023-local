@@ -289,7 +289,24 @@ class CustomTrainingArguments(TrainingArguments):
             )
         },
     )
-
+    temperature: float = field(
+        default=1.0,
+        metadata={
+            "help": (
+                "A temperature parameter for softmax sampling. Set to"
+                "low number for high confidence sampling, high value"
+                "for low confidence sampling."
+            )
+        },
+    )
+    ret_logits: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": (
+                "If true, will return logits as well as prediction idxs when performing model.causal_lm()"
+            )
+        },
+    )
 
     _run_post_init: bool = False
 

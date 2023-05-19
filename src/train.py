@@ -134,32 +134,19 @@ def main(args: DictConfig) -> None:
     else:
         raise ValueError(f"Model type {args.model.model_name_or_path} not supported")
     
+    custom_lm = SentenceAutoEncoder(model_cls, args)
 
-    model = SentenceAutoEncoder(model_cls, args)
- 
+    # 4 Training
+    trainer = Trainer(
+        model=custom_lm.model,
+        args=args.training,
+        train_dataset=tokenized_dataset["train"],
+        eval_dataset=tokenized_dataset["val"],
+    )   
 
-    # if args.model.pretrained:
-    #     model = model_cls.from_pretrained(
-    #         args.model.model_name_or_path,
-    #         from_tf=bool(".ckpt" in args.model.model_name_or_path),
-    #         config=config,
-    #         cache_dir=args.model.cache_dir,
-    #         revision=args.model.model_revision,
-    #     )
-    # else:
-    #     raise ValueError(f"AutoConfig not set")
-    
-    # # 4 Training
-    # trainer = Trainer(
-    #     model=model,
-    #     args=args.training,
-    #     train_dataset=tokenized_dataset["train"],
-    #     eval_dataset=tokenized_dataset["val"],
-    # )   
-
-    # trainer.train()
-    # eval_results = trainer.evaluate()
-    # print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    trainer.train()
+    eval_results = trainer.evaluate()
+    print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
 
 if __name__ == "__main__":
     main()

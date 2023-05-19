@@ -17,37 +17,37 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
                  args: DictConfig,
                  ):
         super().__init__()  
-        self.args = args
-        self.model = model_cls
-        self.t = self.model.transformer
+        self.args = args # see arguments.py
+        self.model = model_cls # hf lm head
+        self.t = self.model.transformer # lm head transformer
 
         self.local_rank = self.args.training.local_rank if self.args.training.local_rank != -1 else "cpu" # uncomment / remove for gpu
 
-        self.wte = self.t.get_input_embeddings().weight  # token embedding weights (`wte'; torch.Size([vocab_size, n_embs]))
-        self.n_embs = self.wte.shape[1]
+        self.wte = self.t.get_input_embeddings().weight  # (wte) shape: [vocab_size, n_embs]
+        self.n_embs = self.wte.shape[1] # n_embs
         
         # custom embedding for cmpr and tsk tokens
         embedding_size = args.training.n_cmps + args.training.n_tsks + int(args.training.sep_cmpr)
         embedding_dtype = torch.float32 if args.model.dtype == 'float32' else torch.float16
-        self.embs = torch.nn.Embedding(embedding_size, self.n_embs, dtype=embedding_dtype)
+        self.embs = torch.nn.Embedding(embedding_size, self.n_embs, dtype=embedding_dtype) # shape: [embedding_size, n_embs]
 
         # set device 
         if self.wte.get_device() > -1: 
             self.embs.to(self.wte.get_device())  
 
         # compression ids, task ids and the separator id
-        self.cmp_ids = list(range(args.training.n_cmps))
+        self.cmp_ids = list(range(args.training.n_cmps)) 
         self.tsk_ids = list(range(args.training.n_cmps, args.training.n_cmps + args.training.n_tsks))
         self.sep_id = args.training.n_tsks + args.training.n_cmps  
 
         data = {'input_ids': [2953, 262, 3726, 286, 262, 10037, 444, 8200, 5701, 1097, 16009, 2275, 11999, 373, 19233, 656, 262, 23327, 13735, 543], 'attention_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'output_ids': [2950, 2406, 739, 262, 6355, 4811, 4634, 34756, 416, 23327, 447, 247, 82, 1353, 2974, 286, 4542, 13, 2275, 11999, 1719, 550, 257, 2383, 2106, 287, 5584, 6332, 340, 373, 3066, 326, 21534, 544, 290, 2275, 11999, 561, 12082, 3386, 290, 2962, 319, 36467, 13, 632, 373, 257, 640, 618, 23327, 373, 14771, 355, 881, 1637, 656, 36467, 355, 584, 2706, 547, 14771, 287, 19639, 352, 13, 5856, 777, 10861, 812, 2275, 11999, 11949, 43737, 48590, 28607, 445, 72, 2727, 257, 2168, 286, 7903, 6300, 286, 3227, 23327, 5006, 351, 12476, 319, 262, 19755, 290, 262, 23134, 11, 290, 2275], 'output_attn_mask': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'labels': [2953, 262, 3726, 286, 262, 10037, 444, 8200, 5701, 1097, 16009, 2275, 11999, 373, 19233, 656, 262, 23327, 13735, 543]}
-        input_ids = torch.LongTensor([data['input_ids'], data['input_ids'], data['input_ids'], data['input_ids']])
-        attention_masks = torch.LongTensor([data['attention_mask'], data['attention_mask'], data['attention_mask'], data['attention_mask']])
-        output_ids = torch.LongTensor([data['output_ids'], data['output_ids'], data['output_ids'], data['output_ids']])
-        output_attn_mask = torch.LongTensor([data['output_attn_mask'], data['output_attn_mask'], data['output_attn_mask'], data['output_attn_mask']])
-
+        input_ids = torch.LongTensor([data['input_ids'], data['input_ids']])
+        attention_masks = torch.LongTensor([data['attention_mask'], data['attention_mask']])
+        output_ids = torch.LongTensor([data['output_ids'], data['output_ids']])
+        output_attn_mask = torch.LongTensor([data['output_attn_mask'], data['output_attn_mask']])
+        print('forward')
         self.forward({'input_ids': input_ids, 'attention_mask': attention_masks, 'output_ids': output_ids, 'output_attn_mask': output_attn_mask})
-        self.infer({'input_ids': input_ids, 'attention_mask': attention_masks, 'output_ids': output_ids, 'output_attn_mask': output_attn_mask})
+        self.causal_lm(input_ids, attention_masks)
     
     @property
     def get_device(self) -> torch.device:
@@ -71,30 +71,30 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         """
         Compresses the input ids to a single vector. See BaseClass for details (Ignoring train_embs and sep_cmpr for now).
         """
-        model_embs = self.get_embeddings()  
-        inpt_embs = model_embs(input_ids)  
+        model_embs = self.get_embeddings()  # shape: [vocab_size, n_embs]
+        inpt_embs = model_embs(input_ids)   # shape [batch_size, cmp_len, n_embs]
 
-        cmp_embs = self.embs.weight[self.cmp_ids[0]:self.cmp_ids[-1]+1]  
-        cmp_embs = cmp_embs[None].repeat(len(inpt_embs), 1, 1) 
+        cmp_embs = self.embs.weight[self.cmp_ids[0]:self.cmp_ids[-1]+1]  # shape: [n_cmps, n_embs]
+        cmp_embs = cmp_embs[None].repeat(len(inpt_embs), 1, 1)  # shape: [batch_size, n_cmps, n_embs]
 
-        inpt_embs = torch.cat([inpt_embs, cmp_embs], dim=1)
+        inpt_embs = torch.cat([inpt_embs, cmp_embs], dim=1) # shape [batch_size, cmp_len + n_cmps, n_embs]
         
         # Pad attention_mask to match new input_emb dimension
-        pad_dim = (0, self.args.training.n_cmps + int(self.args.training.sep_cmpr))
-        attention_mask = F.pad(attention_mask, pad_dim) 
+        pad_dim = (0, self.args.training.n_cmps + int(self.args.training.sep_cmpr)) # (0, n_cmps + int(sep_cmpr))
+        attention_mask = F.pad(attention_mask, pad_dim) # shape: [batch_size, cmp_len + n_cmps]
 
         fx = self.model.transformer( # see BaseModelOutputWithPastAndCrossAttentions (https://huggingface.co/docs/transformers/main_classes/output)
             inputs_embeds=inpt_embs,
             attention_mask=attention_mask,
-            output_hidden_states=True, 
+            output_hidden_states=True, # if false, does not return hidden states
         ) 
         # Select the representational layer of choice, defaulting to the last layer
-        n_layers = len(fx["hidden_states"])
+        n_layers = len(fx["hidden_states"]) # shape: n_blocks (eg 6 GPT2Blocks) + 1 (output_embedding) * [batch_size, cmp_len + n_cmps, n_embs]
         layer_dict = {'half': n_layers//2, None: -1}
         layer = self.args.model.cmp_layer
         chosen_layer = layer_dict.get(layer, layer)
-        cmpr = fx['hidden_states'][chosen_layer][:,-self.args.training.n_cmps:] # shape: (batch_size, n_cmps, n_embs) where n_cmps are the final n_cmps hidden states of the chosen layer
-
+        cmpr = fx['hidden_states'][chosen_layer][:,-self.args.training.n_cmps:] # shape: [batch_size, n_cmps, n_embs] the final n_cmps hidden states of the chosen layer
+        
         return cmpr
 
     def forward(self,
@@ -103,12 +103,13 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
         """
         Runs the forward pass. See BaseClass for details.
         """
-        cmpr = self.compress(**data)
+        # skipping self.args.training.tforce for now (i.e. default = True)
+        cmpr = self.compress(**data) # shape: [batch_size, n_cmps, n_embs]
         if not self.args.training.tforce:
             raise NotImplementedError(f"Not tfoce has to be implemented")
-        model_embs = self.get_embeddings()  
-        out_embs =  model_embs(data["output_ids"]) # shape (batch_size, seq_len, n_embs)
-        sos = self.embs.weight[self.tsk_ids[0]][None,None] # sos token
+        model_embs = self.get_embeddings() # shape: [vocab_size, n_embs]
+        out_embs =  model_embs(data["output_ids"]) # shape: [batch_size, seq_len, n_embs]
+        sos = self.embs.weight[self.tsk_ids[0]][None,None] # shape: [1, 1, n_embs]
         out_embs = torch.cat( 
             [
                 cmpr.to(self.local_rank),
@@ -116,17 +117,46 @@ class SentenceAutoEncoder(AbstractSentenceAutoEncoder):
                 out_embs.to(self.local_rank),
             ],
             dim=1,
-        ) # shape (batch_size, n_cmps + sos + seq_len, n_embs)
+        ) # shape: [batch_size, n_cmps + sos + seq_len, n_embs]
         npad = out_embs.shape[1] - data["output_attn_mask"].shape[1] # int = (n_cmps + sos + seq_len) - seq_len
         attn = F.pad(
             data["output_attn_mask"], 
             (npad, 0), 
-            value=1,
-        ) # shape (batch_size, n_cmps + sos + seq_len)
+            value=1, # inserts 1s
+        ) # shape: [batch_size, n_cmps + sos + seq_len]
         preds = self.model(inputs_embeds=out_embs, attention_mask=attn).logits # shape [batch_size, n_cmps + sos + seq_len, vocab_size]
-        preds = preds[:,cmpr.shape[1]:-1] # shape [batch_size, seq_len, vocab_size]
+        preds = preds[:,cmpr.shape[1]:-1] # shape [batch_size, seq_len, vocab_size] # get rid of cmpr and sos on left of seq
 
         return preds
-
-    def causal_lm(self):
+    
+    def infer(self):
+        """
+        Performs inference without teacher forcing.
+        """
         pass
+    
+    def causal_lm(self,
+                  input_ids: torch.LongTensor,
+                  attention_mask: torch.LongTensor,
+                  inputs_embeds: Optional[torch.FloatTensor] = None, # what's the point of this?
+                  ) -> torch.tensor:
+        """
+        Performs traditional causal language modeling with or
+        without teacher forcing. See BaseClass for details.
+        """
+        if self.args.training.tforce:
+            logits = self.model(input_ids=input_ids, 
+                                attention_mask=attention_mask,
+                                inputs_embeds=inputs_embeds, # dont understand what it means if this is not None
+            ).logits # shape: [batch_size, seq_len, vocab_size]
+        else:
+            raise NotImplementedError(f"tforce has to be implemented")
+        
+        logits = logits[:,:-1] # shape: [batch_size, seq_len, vocab_size] # get rid of last token from input_ids
+        preds = logits.argmax(dim=-1) # shape: [batch_size, seq_len]
+
+        if self.args.training.ret_logits:
+            return preds, logits
+        return preds
+
+    

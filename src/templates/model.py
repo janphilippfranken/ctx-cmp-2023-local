@@ -64,7 +64,7 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
     @abstractmethod
     def forward(self,
                 data: Dict[str, torch.LongTensor],
-                tforce: bool) -> torch.tensor: # shape: [batch_size, seq_len + ?, n_embs]
+                ) -> torch.tensor: # shape: [batch_size, seq_len + ?, n_embs]
         """
         Args:
           data: dict
@@ -78,24 +78,35 @@ class AbstractSentenceAutoEncoder(ABC, torch.nn.Module):
                 should be appended to the end of each sentence
             "output_attn_mask": LongTensor of shape [args.data.batch_size, args.compression.seq_len]
                 attention mask for padding purposes. 0s mean padding.
-          tforce: bool
-            if true, uses teacher forcing
         Returns:
             preds: tensor [batch_size, seq_len, vocab_size]
+        """
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def infer(self):
+        """
+        Performs inference without teacher forcing.
         """
         raise NotImplementedError()
 
     @abstractmethod
     def causal_lm(self,
                   input_ids: torch.LongTensor,
+                  attention_mask: torch.LongTensor,
                   inputs_embeds: torch.FloatTensor,
-                  tforce: bool,
-                  seed_len: Optional[int],
-                  pred_len: Optional[int],
-                  ret_logits: bool,
-                  temperature: float) -> torch.tensor:
+                 ) -> torch.tensor:
         """
         Performs traditional causal language modeling with or without teacher forcing.
+        Args:
+            input_ids: LongTensor shape: [batch_size, seq_len]
+                the token indices of the input sequence. The CMP token
+                should be appended to the end of each sentence. 
+            attention_mask: LongTensor shape: [batch_size, seq_len]
+                attention mask for padding purposes. 0s mean padding.
+            inputs_embeds: FloatTensor shape: [batch_size, seq_len, n_embs]
+                the embeddings of the inputs. If both input_ids and
+                this is argued, input_ids takes priority
         """
         raise NotImplementedError()
     
